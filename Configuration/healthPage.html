@@ -136,6 +136,7 @@
                                 <th>Item</th>
                                 <th>Issue</th>
                                 <th>Severity</th>
+                                <th style="width:120px">Action</th>
                             </tr>
                         </thead>
                         <tbody id="IssuesTableBody">
@@ -262,6 +263,7 @@
 
                     issues.forEach(function(issue) {
                         var tr = document.createElement('tr');
+                        tr.id = 'issue-' + issue.itemId;
 
                         var itemTd = document.createElement('td');
                         var link = document.createElement('a');
@@ -277,9 +279,22 @@
                         severityTd.className = 'severity-' + issue.severity.toLowerCase();
                         severityTd.textContent = issue.severity;
 
+                        var actionTd = document.createElement('td');
+                        if (issue.type === 'MissingSubtitles') {
+                            var downloadBtn = document.createElement('button');
+                            downloadBtn.className = 'emby-button raised';
+                            downloadBtn.style.cssText = 'padding:0.3em 0.6em;font-size:0.85em';
+                            downloadBtn.textContent = 'Get Subs';
+                            downloadBtn.onclick = function() {
+                                self.downloadSubtitles(issue.itemId, issue.itemName, downloadBtn);
+                            };
+                            actionTd.appendChild(downloadBtn);
+                        }
+
                         tr.appendChild(itemTd);
                         tr.appendChild(issueTd);
                         tr.appendChild(severityTd);
+                        tr.appendChild(actionTd);
                         tbody.appendChild(tr);
                     });
                 },
@@ -309,6 +324,35 @@
                         btn.disabled = false;
                         console.error('Scan failed:', err);
                         Dashboard.alert('Scan failed. Check the server logs.');
+                    });
+                },
+
+                downloadSubtitles: function(itemId, itemName, btn) {
+                    var self = this;
+                    var originalText = btn.textContent;
+                    btn.disabled = true;
+                    btn.textContent = '...';
+
+                    var url = ApiClient.getUrl('LibraryHealth/DownloadSubtitles/' + itemId);
+                    ApiClient.fetch({
+                        url: url,
+                        type: 'POST',
+                        dataType: 'json'
+                    }).then(function(result) {
+                        if (result.success) {
+                            btn.textContent = 'Done!';
+                            btn.style.background = '#4caf50';
+                            Dashboard.alert('Subtitles downloaded for: ' + itemName);
+                        } else {
+                            btn.textContent = 'None';
+                            btn.disabled = false;
+                            Dashboard.alert(result.message || 'No forced subtitles found.');
+                        }
+                    }).catch(function(err) {
+                        btn.textContent = originalText;
+                        btn.disabled = false;
+                        console.error('Download failed:', err);
+                        Dashboard.alert('Failed to download subtitles. Is OpenSubtitles plugin installed?');
                     });
                 },
 

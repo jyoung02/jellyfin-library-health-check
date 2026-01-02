@@ -7,7 +7,9 @@ using Jellyfin.Data.Enums;
 using LibraryHealthCheck.Configuration;
 using LibraryHealthCheck.Models;
 using MediaBrowser.Controller.Entities;
+using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Controller.Library;
+using MediaBrowser.Controller.Subtitles;
 using MediaBrowser.Model.Entities;
 using MediaBrowser.Model.Querying;
 using Microsoft.Extensions.Logging;
@@ -20,6 +22,7 @@ namespace LibraryHealthCheck.Services;
 public class LibraryScanner
 {
     private readonly ILibraryManager _libraryManager;
+    private readonly ISubtitleManager _subtitleManager;
     private readonly DataStore _dataStore;
     private readonly ILogger<LibraryScanner> _logger;
 
@@ -31,10 +34,12 @@ public class LibraryScanner
     /// </summary>
     public LibraryScanner(
         ILibraryManager libraryManager,
+        ISubtitleManager subtitleManager,
         DataStore dataStore,
         ILogger<LibraryScanner> logger)
     {
         _libraryManager = libraryManager ?? throw new ArgumentNullException(nameof(libraryManager));
+        _subtitleManager = subtitleManager ?? throw new ArgumentNullException(nameof(subtitleManager));
         _dataStore = dataStore ?? throw new ArgumentNullException(nameof(dataStore));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
@@ -192,4 +197,73 @@ public class LibraryScanner
             item.Name,
             libraryName);
     }
+
+    /// <summary>
+    /// Downloads forced English subtitles for an item.
+    /// </summary>
+    /// <param name="itemId">The item ID.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>True if subtitles were downloaded, false otherwise.</returns>
+    public async Task<SubtitleDownloadResult> DownloadSubtitlesAsync(Guid itemId, CancellationToken cancellationToken = default)
+    {
+        var item = _libraryManager.GetItemById(itemId);
+        if (item is not Video video)
+        {
+            return new SubtitleDownloadResult(false, "Item is not a video.");
+        }
+
+        _logger.LogInformation("Searching for forced English subtitles for: {ItemName}", item.Name);
+
+        try
+        {
+            // Search for English subtitles (isPerfectMatch: true, isAutomated: true)
+            var results = await _subtitleManager.SearchSubtitles(video, "eng", true, true, cancellationToken)
+                .ConfigureAwait(false);
+
+            // Filter for forced/foreign-parts-only subtitles by name
+            var forcedSubtitle = results
+                .Where(s => (s.Name?.Contains("forced", StringComparison.OrdinalIgnoreCase) ?? false) ||
+                           (s.Name?.Contains("foreign", StringComparison.OrdinalIgnoreCase) ?? false))
+                .OrderByDescending(s => s.CommunityRating ?? 0)
+                .FirstOrDefault();
+
+            if (forcedSubtitle == null)
+            {
+                _logger.LogInformation("No forced English subtitles found for: {ItemName}", item.Name);
+                return new SubtitleDownloadResult(false, "No forced English subtitles found.");
+            }
+
+            _logger.LogInformation(
+                "Downloading subtitle: {SubtitleName} for {ItemName}",
+                forcedSubtitle.Name,
+                item.Name);
+
+            // Download the subtitle
+            await _subtitleManager.DownloadSubtitles(video, forcedSubtitle.Id, cancellationToken)
+                .ConfigureAwait(false);
+
+            _logger.LogInformation("Successfully downloaded subtitles for: {ItemName}", item.Name);
+            return new SubtitleDownloadResult(true, $"Downloaded: {forcedSubtitle.Name}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to download subtitles for: {ItemName}", item.Name);
+            return new SubtitleDownloadResult(false, $"Error: {ex.Message}");
+        }
+    }
+}
+
+/// <summary>
+/// Result of a subtitle download attempt.
+/// </summary>
+public class SubtitleDownloadResult
+{
+    public SubtitleDownloadResult(bool success, string message)
+    {
+        Success = success;
+        Message = message;
+    }
+
+    public bool Success { get; }
+    public string Message { get; }
 }

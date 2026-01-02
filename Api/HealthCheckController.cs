@@ -185,6 +185,34 @@ public class HealthCheckController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>
+    /// Downloads forced English subtitles for an item.
+    /// </summary>
+    [HttpPost("DownloadSubtitles/{itemId}")]
+    [ProducesResponseType(typeof(SubtitleDownloadResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<SubtitleDownloadResponse>> DownloadSubtitles(
+        [FromRoute] string itemId,
+        CancellationToken cancellationToken)
+    {
+        var validatedId = ValidateLibraryIdParameter(itemId);
+        if (validatedId == null)
+        {
+            return BadRequest("Invalid item ID format.");
+        }
+
+        _logger.LogInformation("API request: DownloadSubtitles for {ItemId}", validatedId);
+
+        var result = await _libraryScanner.DownloadSubtitlesAsync(validatedId.Value, cancellationToken)
+            .ConfigureAwait(false);
+
+        return Ok(new SubtitleDownloadResponse
+        {
+            Success = result.Success,
+            Message = result.Message
+        });
+    }
+
     private Guid? ValidateLibraryIdParameter(string? libraryId)
     {
         if (string.IsNullOrWhiteSpace(libraryId))
@@ -231,4 +259,16 @@ public class ScanStatus
 
     /// <summary>Gets or sets the current library ID being scanned.</summary>
     public string? CurrentLibraryId { get; set; }
+}
+
+/// <summary>
+/// Subtitle download response DTO.
+/// </summary>
+public class SubtitleDownloadResponse
+{
+    /// <summary>Gets or sets a value indicating whether the download was successful.</summary>
+    public bool Success { get; set; }
+
+    /// <summary>Gets or sets the result message.</summary>
+    public string Message { get; set; } = string.Empty;
 }
