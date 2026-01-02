@@ -60,6 +60,14 @@
                         <div class="fieldDescription">Check for items without genre information.</div>
                     </div>
 
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label class="emby-checkbox-label">
+                            <input type="checkbox" is="emby-checkbox" id="CheckMissingSubtitles" />
+                            <span>Missing Subtitles</span>
+                        </label>
+                        <div class="fieldDescription">Check for video items without any subtitle tracks.</div>
+                    </div>
+
                     <div style="margin-top: 2em;">
                         <button is="emby-button" type="submit" class="raised button-submit block emby-button">
                             <span>Save</span>
@@ -81,6 +89,7 @@
                         document.getElementById('CheckMissingOverview').checked = config.CheckMissingOverview;
                         document.getElementById('CheckMissingYear').checked = config.CheckMissingYear;
                         document.getElementById('CheckMissingGenre').checked = config.CheckMissingGenre;
+                        document.getElementById('CheckMissingSubtitles').checked = config.CheckMissingSubtitles;
                         Dashboard.hideLoadingMsg();
                     }).catch(function(err) {
                         console.error('Failed to load config:', err);
@@ -98,6 +107,7 @@
                         config.CheckMissingOverview = document.getElementById('CheckMissingOverview').checked;
                         config.CheckMissingYear = document.getElementById('CheckMissingYear').checked;
                         config.CheckMissingGenre = document.getElementById('CheckMissingGenre').checked;
+                        config.CheckMissingSubtitles = document.getElementById('CheckMissingSubtitles').checked;
 
                         ApiClient.updatePluginConfiguration(self.pluginId, config).then(function() {
                             Dashboard.hideLoadingMsg();

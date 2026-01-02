@@ -32,7 +32,10 @@ public enum IssueType
     MissingYear = 2,
 
     /// <summary>Item is missing genre information.</summary>
-    MissingGenre = 3
+    MissingGenre = 3,
+
+    /// <summary>Item is missing subtitles.</summary>
+    MissingSubtitles = 4
 }
 
 /// <summary>

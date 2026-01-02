@@ -17,6 +17,7 @@ public class PluginConfiguration : BasePluginConfiguration
         CheckMissingOverview = true;
         CheckMissingYear = true;
         CheckMissingGenre = true;
+        CheckMissingSubtitles = true;
     }
 
     /// <summary>
@@ -43,4 +44,9 @@ public class PluginConfiguration : BasePluginConfiguration
     /// Gets or sets a value indicating whether to check for missing genres.
     /// </summary>
     public bool CheckMissingGenre { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether to check for missing subtitles.
+    /// </summary>
+    public bool CheckMissingSubtitles { get; set; }
 }

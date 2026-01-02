@@ -159,6 +159,17 @@ public class LibraryScanner
             AddIssue(scanResult, item, libraryName, IssueType.MissingGenre, IssueSeverity.Info);
         }
 
+        // Check for missing subtitles (only for video items)
+        if (config.CheckMissingSubtitles && item is Video video)
+        {
+            var mediaStreams = video.GetMediaStreams();
+            var hasSubtitles = mediaStreams?.Any(s => s.Type == MediaStreamType.Subtitle) ?? false;
+            if (!hasSubtitles)
+            {
+                AddIssue(scanResult, item, libraryName, IssueType.MissingSubtitles, IssueSeverity.Info);
+            }
+        }
+
         return Task.CompletedTask;
     }
 
