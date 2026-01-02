@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Library Health Check</title>
+    <style>
+        .health-container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        .health-controls {
+            display: flex;
+            gap: 1em;
+            align-items: center;
+            margin-bottom: 1.5em;
+            flex-wrap: wrap;
+        }
+        .health-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 1.5em;
+        }
+        .health-table th,
+        .health-table td {
+            padding: 0.75em;
+            text-align: left;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .health-table th {
+            font-weight: 600;
+            color: #999;
+            font-size: 0.9em;
+            text-transform: uppercase;
+        }
+        .health-table tr:hover {
+            background: rgba(255,255,255,0.05);
+        }
+        .summary-card {
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+            padding: 1.5em;
+            margin-bottom: 1.5em;
+        }
+        .summary-stats {
+            display: flex;
+            gap: 2em;
+            flex-wrap: wrap;
+        }
+        .stat-item {
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 2em;
+            font-weight: 600;
+        }
+        .stat-label {
+            color: #999;
+            font-size: 0.9em;
+        }
+        .severity-error { color: #ef5350; }
+        .severity-warning { color: #ffb74d; }
+        .severity-info { color: #4fc3f7; }
+        .no-results {
+            text-align: center;
+            padding: 2em;
+            color: #888;
+        }
+        .item-link {
+            color: #00a4dc;
+            text-decoration: none;
+        }
+        .item-link:hover {
+            text-decoration: underline;
+        }
+        .scan-status {
+            padding: 0.5em 1em;
+            border-radius: 4px;
+            background: rgba(255,193,7,0.2);
+            color: #ffc107;
+            display: none;
+        }
+        .scan-status.active {
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+    <div id="HealthCheckPage" data-role="page" class="page type-interior pluginConfigurationPage">
+        <div data-role="content">
+            <div class="content-primary health-container">
+                <h2>Library Health Check</h2>
+
+                <div class="health-controls">
+                    <div class="inputContainer" style="flex: 1; min-width: 200px;">
+                        <label class="inputLabel" for="LibrarySelect">Select Library</label>
+                        <select id="LibrarySelect" class="emby-select">
+                            <option value="">-- Select a library --</option>
+                        </select>
+                    </div>
+                    <button id="ScanBtn" class="raised emby-button" disabled>
+                        <span>Scan Library</span>
+                    </button>
+                    <span id="ScanStatus" class="scan-status">Scanning...</span>
+                </div>
+
+                <div id="SummaryCard" class="summary-card" style="display:none">
+                    <h3 style="margin-top:0">Scan Results: <span id="LibraryName"></span></h3>
+                    <div class="summary-stats">
+                        <div class="stat-item">
+                            <div class="stat-value" id="TotalItems">0</div>
+                            <div class="stat-label">Items Scanned</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value severity-error" id="ErrorCount">0</div>
+                            <div class="stat-label">Errors</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value severity-warning" id="WarningCount">0</div>
+                            <div class="stat-label">Warnings</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value severity-info" id="InfoCount">0</div>
+                            <div class="stat-label">Info</div>
+                        </div>
+                    </div>
+                    <p style="color:#888;margin-bottom:0">
+                        Last scanned: <span id="LastScanned">Never</span>
+                    </p>
+                </div>
+
+                <div id="IssuesSection" style="display:none">
+                    <h3>Issues Found</h3>
+                    <table class="health-table">
+                        <thead>
+                            <tr>
+                                <th>Item</th>
+                                <th>Issue</th>
+                                <th>Severity</th>
+                            </tr>
+                        </thead>
+                        <tbody id="IssuesTableBody">
+                        </tbody>
+                    </table>
+                    <div id="NoIssues" class="no-results" style="display:none">
+                        No issues found! Your library is healthy.
+                    </div>
+                </div>
+            </div>
+        </div>
+        <script type="text/javascript">
+            var HealthChecker = {
+                currentLibraryId: null,
+                initialized: false,
+                pollInterval: null,
+
+                init: function() {
+                    if (!this.initialized) {
+                        this.initialized = true;
+                        this.loadLibraries();
+                        this.bindEvents();
+                    }
+                    this.reset();
+                },
+
+                reset: function() {
+                    this.currentLibraryId = null;
+                    document.getElementById('LibrarySelect').value = '';
+                    document.getElementById('ScanBtn').disabled = true;
+                    document.getElementById('SummaryCard').style.display = 'none';
+                    document.getElementById('IssuesSection').style.display = 'none';
+                },
+
+                bindEvents: function() {
+                    document.getElementById('LibrarySelect').addEventListener('change', this.onLibraryChange.bind(this));
+                    document.getElementById('ScanBtn').addEventListener('click', this.startScan.bind(this));
+                },
+
+                loadLibraries: function() {
+                    var self = this;
+                    var url = ApiClient.getUrl('LibraryHealth/Libraries');
+                    ApiClient.fetch({
+                        url: url,
+                        type: 'GET',
+                        dataType: 'json'
+                    }).then(function(libraries) {
+                        var select = document.getElementById('LibrarySelect');
+                        libraries.forEach(function(lib) {
+                            var option = document.createElement('option');
+                            option.value = lib.id;
+                            option.textContent = lib.name + ' (' + lib.collectionType + ')';
+                            select.appendChild(option);
+                        });
+                    }).catch(function(err) {
+                        console.error('Failed to load libraries:', err);
+                    });
+                },
+
+                onLibraryChange: function(e) {
+                    var libraryId = e.target.value;
+                    document.getElementById('ScanBtn').disabled = !libraryId;
+                    document.getElementById('SummaryCard').style.display = 'none';
+                    document.getElementById('IssuesSection').style.display = 'none';
+
+                    if (libraryId) {
+                        this.currentLibraryId = libraryId;
+                        this.loadResults(libraryId);
+                    } else {
+                        this.currentLibraryId = null;
+                    }
+                },
+
+                loadResults: function(libraryId) {
+                    var self = this;
+                    var url = ApiClient.getUrl('LibraryHealth/Results/' + libraryId);
+                    ApiClient.fetch({
+                        url: url,
+                        type: 'GET',
+                        dataType: 'json'
+                    }).then(function(result) {
+                        self.renderResults(result);
+                    }).catch(function(err) {
+                        if (err.status !== 404) {
+                            console.error('Failed to load results:', err);
+                        }
+                    });
+                },
+
+                renderResults: function(result) {
+                    document.getElementById('LibraryName').textContent = result.libraryName;
+                    document.getElementById('TotalItems').textContent = result.totalItems;
+                    document.getElementById('LastScanned').textContent = this.formatDate(result.completedAt);
+
+                    var errors = 0, warnings = 0, infos = 0;
+                    result.issues.forEach(function(issue) {
+                        if (issue.severity === 'Error') errors++;
+                        else if (issue.severity === 'Warning') warnings++;
+                        else infos++;
+                    });
+
+                    document.getElementById('ErrorCount').textContent = errors;
+                    document.getElementById('WarningCount').textContent = warnings;
+                    document.getElementById('InfoCount').textContent = infos;
+
+                    document.getElementById('SummaryCard').style.display = '';
+                    document.getElementById('IssuesSection').style.display = '';
+
+                    this.renderIssues(result.issues);
+                },
+
+                renderIssues: function(issues) {
+                    var tbody = document.getElementById('IssuesTableBody');
+                    var noIssues = document.getElementById('NoIssues');
+                    tbody.innerHTML = '';
+
+                    if (!issues || issues.length === 0) {
+                        noIssues.style.display = '';
+                        return;
+                    }
+
+                    noIssues.style.display = 'none';
+                    var self = this;
+
+                    issues.forEach(function(issue) {
+                        var tr = document.createElement('tr');
+
+                        var itemTd = document.createElement('td');
+                        var link = document.createElement('a');
+                        link.className = 'item-link';
+                        link.href = '/web/index.html#!/item?id=' + issue.itemId;
+                        link.textContent = issue.itemName;
+                        itemTd.appendChild(link);
+
+                        var issueTd = document.createElement('td');
+                        issueTd.textContent = self.formatIssueType(issue.type);
+
+                        var severityTd = document.createElement('td');
+                        severityTd.className = 'severity-' + issue.severity.toLowerCase();
+                        severityTd.textContent = issue.severity;
+
+                        tr.appendChild(itemTd);
+                        tr.appendChild(issueTd);
+                        tr.appendChild(severityTd);
+                        tbody.appendChild(tr);
+                    });
+                },
+
+                startScan: function() {
+                    if (!this.currentLibraryId) return;
+
+                    var self = this;
+                    var btn = document.getElementById('ScanBtn');
+                    var status = document.getElementById('ScanStatus');
+
+                    btn.disabled = true;
+                    status.classList.add('active');
+
+                    var url = ApiClient.getUrl('LibraryHealth/Scan/' + this.currentLibraryId);
+                    ApiClient.fetch({
+                        url: url,
+                        type: 'POST',
+                        dataType: 'json'
+                    }).then(function(result) {
+                        status.classList.remove('active');
+                        btn.disabled = false;
+                        self.renderResults(result);
+                        Dashboard.alert('Scan complete! Found ' + result.issuesFound + ' issues.');
+                    }).catch(function(err) {
+                        status.classList.remove('active');
+                        btn.disabled = false;
+                        console.error('Scan failed:', err);
+                        Dashboard.alert('Scan failed. Check the server logs.');
+                    });
+                },
+
+                formatDate: function(dateStr) {
+                    if (!dateStr) return 'Never';
+                    var date = new Date(dateStr);
+                    return date.toLocaleDateString(undefined, {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                },
+
+                formatIssueType: function(type) {
+                    var types = {
+                        'MissingPoster': 'Missing Poster',
+                        'MissingOverview': 'Missing Description',
+                        'MissingYear': 'Missing Year',
+                        'MissingGenre': 'Missing Genre'
+                    };
+                    return types[type] || type;
+                }
+            };
+
+            document.getElementById('HealthCheckPage').addEventListener('viewshow', function() {
+                HealthChecker.init();
+            });
+
+            if (document.getElementById('LibrarySelect').options.length <= 1) {
+                HealthChecker.init();
+            }
+        </script>
+    </div>
+</body>
+</html>

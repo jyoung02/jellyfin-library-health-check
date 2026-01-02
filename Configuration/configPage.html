@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Library Health Check</title>
+</head>
+<body>
+    <div id="LibraryHealthCheckConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-checkbox">
+        <div data-role="content">
+            <div class="content-primary">
+                <form id="LibraryHealthCheckConfigForm">
+                    <div class="sectionTitleContainer">
+                        <h2 class="sectionTitle">Library Health Check Settings</h2>
+                        <a is="emby-linkbutton" class="raised raised-mini emby-button" href="configurationpage?name=Health%20Check%20Results">
+                            <span>Open Health Check</span>
+                        </a>
+                    </div>
+
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label class="emby-checkbox-label">
+                            <input type="checkbox" is="emby-checkbox" id="EnableScanning" />
+                            <span>Enable Scanning</span>
+                        </label>
+                        <div class="fieldDescription">Allow the plugin to scan libraries for health issues.</div>
+                    </div>
+
+                    <div class="sectionTitleContainer" style="margin-top: 2em;">
+                        <h3 class="sectionTitle">Checks to Perform</h3>
+                    </div>
+
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label class="emby-checkbox-label">
+                            <input type="checkbox" is="emby-checkbox" id="CheckMissingPoster" />
+                            <span>Missing Poster</span>
+                        </label>
+                        <div class="fieldDescription">Check for items without a primary image/poster.</div>
+                    </div>
+
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label class="emby-checkbox-label">
+                            <input type="checkbox" is="emby-checkbox" id="CheckMissingOverview" />
+                            <span>Missing Overview</span>
+                        </label>
+                        <div class="fieldDescription">Check for items without a description/overview.</div>
+                    </div>
+
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label class="emby-checkbox-label">
+                            <input type="checkbox" is="emby-checkbox" id="CheckMissingYear" />
+                            <span>Missing Year</span>
+                        </label>
+                        <div class="fieldDescription">Check for items without a production year.</div>
+                    </div>
+
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label class="emby-checkbox-label">
+                            <input type="checkbox" is="emby-checkbox" id="CheckMissingGenre" />
+                            <span>Missing Genre</span>
+                        </label>
+                        <div class="fieldDescription">Check for items without genre information.</div>
+                    </div>
+
+                    <div style="margin-top: 2em;">
+                        <button is="emby-button" type="submit" class="raised button-submit block emby-button">
+                            <span>Save</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <script type="text/javascript">
+            var LibraryHealthCheckConfig = {
+                pluginId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+
+                loadConfig: function() {
+                    var self = this;
+                    Dashboard.showLoadingMsg();
+                    ApiClient.getPluginConfiguration(this.pluginId).then(function(config) {
+                        document.getElementById('EnableScanning').checked = config.EnableScanning;
+                        document.getElementById('CheckMissingPoster').checked = config.CheckMissingPoster;
+                        document.getElementById('CheckMissingOverview').checked = config.CheckMissingOverview;
+                        document.getElementById('CheckMissingYear').checked = config.CheckMissingYear;
+                        document.getElementById('CheckMissingGenre').checked = config.CheckMissingGenre;
+                        Dashboard.hideLoadingMsg();
+                    }).catch(function(err) {
+                        console.error('Failed to load config:', err);
+                        Dashboard.hideLoadingMsg();
+                    });
+                },
+
+                saveConfig: function() {
+                    var self = this;
+                    Dashboard.showLoadingMsg();
+
+                    ApiClient.getPluginConfiguration(this.pluginId).then(function(config) {
+                        config.EnableScanning = document.getElementById('EnableScanning').checked;
+                        config.CheckMissingPoster = document.getElementById('CheckMissingPoster').checked;
+                        config.CheckMissingOverview = document.getElementById('CheckMissingOverview').checked;
+                        config.CheckMissingYear = document.getElementById('CheckMissingYear').checked;
+                        config.CheckMissingGenre = document.getElementById('CheckMissingGenre').checked;
+
+                        ApiClient.updatePluginConfiguration(self.pluginId, config).then(function() {
+                            Dashboard.hideLoadingMsg();
+                            Dashboard.alert('Settings saved.');
+                        }).catch(function(err) {
+                            Dashboard.hideLoadingMsg();
+                            Dashboard.alert('Failed to save settings.');
+                            console.error('Save failed:', err);
+                        });
+                    });
+                }
+            };
+
+            document.getElementById('LibraryHealthCheckConfigPage').addEventListener('viewshow', function() {
+                LibraryHealthCheckConfig.loadConfig();
+            });
+
+            document.getElementById('LibraryHealthCheckConfigForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                LibraryHealthCheckConfig.saveConfig();
+            });
+        </script>
+    </div>
+</body>
+</html>
