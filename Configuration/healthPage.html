@@ -361,8 +361,10 @@
                     if (subtitleIssues.length > 0 && self.hasSubtitleProviders) {
                         downloadAllBtn.style.display = '';
                         downloadAllBtn.textContent = 'Download All Subtitles (' + subtitleIssues.length + ')';
+                        downloadAllBtn.dataset.count = subtitleIssues.length;
                     } else {
                         downloadAllBtn.style.display = 'none';
+                        downloadAllBtn.dataset.count = '0';
                     }
 
                     issues.forEach(function(issue) {
@@ -468,6 +470,22 @@
 
                     var self = this;
                     var btn = document.getElementById('DownloadAllBtn');
+                    var itemCount = parseInt(btn.dataset.count || '0', 10);
+
+                    // Show warning dialog
+                    var msg = 'You are about to download subtitles for ' + itemCount + ' items.\n\n';
+                    msg += 'OpenSubtitles limits:\n';
+                    msg += '- Free accounts: 20 downloads/day\n';
+                    msg += '- VIP accounts: 1000 downloads/day\n\n';
+                    if (itemCount > 20) {
+                        msg += '⚠️ This exceeds the free account limit!\n\n';
+                    }
+                    msg += 'Continue?';
+
+                    if (!confirm(msg)) {
+                        return;
+                    }
+
                     var progress = document.getElementById('BatchProgress');
 
                     btn.disabled = true;
