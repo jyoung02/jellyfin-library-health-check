@@ -37,7 +37,7 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     public override string Description => "Scans media libraries for issues like missing metadata, posters, and descriptions.";
 
     /// <inheritdoc />
-    public override Guid Id => new Guid("a1b2c3d4-e5f6-7890-abcd-ef1234567890");
+    public override Guid Id => new Guid("b2c3d4e5-f6a7-8901-bcde-f23456789012");
 
     /// <summary>
     /// Gets the plugin pages.
