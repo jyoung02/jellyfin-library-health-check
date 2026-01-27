@@ -40,11 +40,14 @@ LibraryHealthCheck/
 - Missing subtitles detection for video items
 - Configurable via settings
 
-### v1.2.0 - Subtitle Download (In Progress)
+### v1.2.0 - Subtitle Download
 - Download forced English subtitles for items missing subtitles
 - Uses Jellyfin's ISubtitleManager to search OpenSubtitles
 - Filters for "forced" or "foreign parts only" subtitles
-- Matches content by hash/metadata
+- Fallback to regular English subtitles if no forced subs found
+- Subtitle provider check with user warning if none configured
+- Batch download for all items missing subtitles
+- Progress tracking with live UI updates
 
 ## REST API
 
@@ -56,15 +59,18 @@ LibraryHealthCheck/
 - `GET /LibraryHealth/Status` - Check if scan is running
 - `DELETE /LibraryHealth/Results/{libraryId}` - Delete scan results
 
-### New Endpoints (v1.2.0)
-- `POST /LibraryHealth/DownloadSubtitles/{itemId}` - Download forced English subtitles
+### Subtitle Endpoints (v1.2.0)
+- `POST /LibraryHealth/DownloadSubtitles/{itemId}` - Download subtitles for single item
+- `GET /LibraryHealth/SubtitleProviders` - Check if subtitle providers are configured
+- `POST /LibraryHealth/DownloadAllSubtitles/{libraryId}?forcedOnly=false` - Batch download
+- `GET /LibraryHealth/BatchProgress` - Get batch download progress
 
 ## Future Features
 - Duplicate detection
 - Corrupt file detection (ffprobe)
 - Resolution/codec statistics
 - Scheduled automatic scans
-- Batch subtitle download for all missing items
+- Configurable subtitle language preference
 
 ## Key Jellyfin APIs
 - `ILibraryManager` - Access library items

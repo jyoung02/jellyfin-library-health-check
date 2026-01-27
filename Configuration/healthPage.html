@@ -82,6 +82,48 @@
         .scan-status.active {
             display: inline-block;
         }
+        .warning-banner {
+            background: rgba(255,152,0,0.2);
+            border: 1px solid rgba(255,152,0,0.5);
+            border-radius: 4px;
+            padding: 1em;
+            margin-bottom: 1.5em;
+            display: none;
+        }
+        .warning-banner.active {
+            display: block;
+        }
+        .batch-progress {
+            background: rgba(0,0,0,0.3);
+            border-radius: 4px;
+            padding: 1em;
+            margin-bottom: 1em;
+            display: none;
+        }
+        .batch-progress.active {
+            display: block;
+        }
+        .progress-bar {
+            height: 8px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 0.5em 0;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            background: #00a4dc;
+            transition: width 0.3s ease;
+        }
+        .progress-stats {
+            display: flex;
+            gap: 1.5em;
+            font-size: 0.9em;
+            color: #999;
+        }
+        .progress-stats span {
+            color: #fff;
+        }
     </style>
 </head>
 <body>
@@ -89,6 +131,11 @@
         <div data-role="content">
             <div class="content-primary health-container">
                 <h2>Library Health Check</h2>
+
+                <div id="ProviderWarning" class="warning-banner">
+                    <strong>Warning:</strong> No subtitle providers configured.
+                    Install the <a href="/web/index.html#!/dashboard/plugins" style="color:#ffb74d">OpenSubtitles plugin</a> to enable subtitle downloads.
+                </div>
 
                 <div class="health-controls">
                     <div class="inputContainer" style="flex: 1; min-width: 200px;">
@@ -129,7 +176,29 @@
                 </div>
 
                 <div id="IssuesSection" style="display:none">
-                    <h3>Issues Found</h3>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1em">
+                        <h3 style="margin:0">Issues Found</h3>
+                        <button id="DownloadAllBtn" class="raised emby-button" style="display:none">
+                            <span>Download All Subtitles</span>
+                        </button>
+                    </div>
+
+                    <div id="BatchProgress" class="batch-progress">
+                        <div style="display:flex;justify-content:space-between;align-items:center">
+                            <span id="BatchCurrentItem">Processing...</span>
+                            <span id="BatchPercent">0%</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div id="BatchProgressFill" class="progress-bar-fill" style="width:0%"></div>
+                        </div>
+                        <div class="progress-stats">
+                            <div>Completed: <span id="BatchCompleted">0</span>/<span id="BatchTotal">0</span></div>
+                            <div>Success: <span id="BatchSucceeded" style="color:#4caf50">0</span></div>
+                            <div>Failed: <span id="BatchFailed" style="color:#ef5350">0</span></div>
+                            <div>Not Found: <span id="BatchNotFound" style="color:#999">0</span></div>
+                        </div>
+                    </div>
+
                     <table class="health-table">
                         <thead>
                             <tr>
@@ -153,14 +222,37 @@
                 currentLibraryId: null,
                 initialized: false,
                 pollInterval: null,
+                batchPollInterval: null,
+                hasSubtitleProviders: false,
 
                 init: function() {
                     if (!this.initialized) {
                         this.initialized = true;
                         this.loadLibraries();
                         this.bindEvents();
+                        this.checkSubtitleProviders();
                     }
                     this.reset();
+                },
+
+                checkSubtitleProviders: function() {
+                    var self = this;
+                    var url = ApiClient.getUrl('LibraryHealth/SubtitleProviders');
+                    ApiClient.fetch({
+                        url: url,
+                        type: 'GET',
+                        dataType: 'json'
+                    }).then(function(result) {
+                        self.hasSubtitleProviders = result.hasProviders;
+                        var warning = document.getElementById('ProviderWarning');
+                        if (!result.hasProviders) {
+                            warning.classList.add('active');
+                        } else {
+                            warning.classList.remove('active');
+                        }
+                    }).catch(function(err) {
+                        console.error('Failed to check subtitle providers:', err);
+                    });
                 },
 
                 reset: function() {
@@ -174,6 +266,7 @@
                 bindEvents: function() {
                     document.getElementById('LibrarySelect').addEventListener('change', this.onLibraryChange.bind(this));
                     document.getElementById('ScanBtn').addEventListener('click', this.startScan.bind(this));
+                    document.getElementById('DownloadAllBtn').addEventListener('click', this.startBatchDownload.bind(this));
                 },
 
                 loadLibraries: function() {
@@ -251,15 +344,26 @@
                 renderIssues: function(issues) {
                     var tbody = document.getElementById('IssuesTableBody');
                     var noIssues = document.getElementById('NoIssues');
+                    var downloadAllBtn = document.getElementById('DownloadAllBtn');
                     tbody.innerHTML = '';
 
                     if (!issues || issues.length === 0) {
                         noIssues.style.display = '';
+                        downloadAllBtn.style.display = 'none';
                         return;
                     }
 
                     noIssues.style.display = 'none';
                     var self = this;
+
+                    // Show Download All button if there are missing subtitle issues
+                    var subtitleIssues = issues.filter(function(i) { return i.type === 'MissingSubtitles'; });
+                    if (subtitleIssues.length > 0 && self.hasSubtitleProviders) {
+                        downloadAllBtn.style.display = '';
+                        downloadAllBtn.textContent = 'Download All Subtitles (' + subtitleIssues.length + ')';
+                    } else {
+                        downloadAllBtn.style.display = 'none';
+                    }
 
                     issues.forEach(function(issue) {
                         var tr = document.createElement('tr');
@@ -340,13 +444,16 @@
                         dataType: 'json'
                     }).then(function(result) {
                         if (result.success) {
-                            btn.textContent = 'Done!';
-                            btn.style.background = '#4caf50';
-                            Dashboard.alert('Subtitles downloaded for: ' + itemName);
+                            btn.textContent = result.usedFallback ? 'Done*' : 'Done!';
+                            btn.style.background = result.usedFallback ? '#ff9800' : '#4caf50';
+                            var msg = result.usedFallback
+                                ? 'Fallback subtitles downloaded for: ' + itemName
+                                : 'Subtitles downloaded for: ' + itemName;
+                            Dashboard.alert(msg);
                         } else {
                             btn.textContent = 'None';
                             btn.disabled = false;
-                            Dashboard.alert(result.message || 'No forced subtitles found.');
+                            Dashboard.alert(result.message || 'No subtitles found.');
                         }
                     }).catch(function(err) {
                         btn.textContent = originalText;
@@ -354,6 +461,77 @@
                         console.error('Download failed:', err);
                         Dashboard.alert('Failed to download subtitles. Is OpenSubtitles plugin installed?');
                     });
+                },
+
+                startBatchDownload: function() {
+                    if (!this.currentLibraryId) return;
+
+                    var self = this;
+                    var btn = document.getElementById('DownloadAllBtn');
+                    var progress = document.getElementById('BatchProgress');
+
+                    btn.disabled = true;
+                    btn.textContent = 'Downloading...';
+                    progress.classList.add('active');
+
+                    // Reset progress display
+                    this.updateBatchProgress({
+                        total: 0,
+                        completed: 0,
+                        succeeded: 0,
+                        failed: 0,
+                        noSubtitlesFound: 0,
+                        isRunning: true,
+                        currentItem: 'Starting...'
+                    });
+
+                    var url = ApiClient.getUrl('LibraryHealth/DownloadAllSubtitles/' + this.currentLibraryId);
+                    ApiClient.fetch({
+                        url: url,
+                        type: 'POST',
+                        dataType: 'json'
+                    }).then(function(result) {
+                        self.updateBatchProgress(result);
+                        self.onBatchComplete(result);
+                    }).catch(function(err) {
+                        console.error('Batch download failed:', err);
+                        progress.classList.remove('active');
+                        btn.disabled = false;
+                        btn.textContent = 'Download All Subtitles';
+                        Dashboard.alert('Batch download failed. Check the server logs.');
+                    });
+                },
+
+                updateBatchProgress: function(progress) {
+                    var percent = progress.total > 0 ? Math.round((progress.completed / progress.total) * 100) : 0;
+
+                    document.getElementById('BatchCurrentItem').textContent = progress.currentItem || 'Processing...';
+                    document.getElementById('BatchPercent').textContent = percent + '%';
+                    document.getElementById('BatchProgressFill').style.width = percent + '%';
+                    document.getElementById('BatchCompleted').textContent = progress.completed;
+                    document.getElementById('BatchTotal').textContent = progress.total;
+                    document.getElementById('BatchSucceeded').textContent = progress.succeeded;
+                    document.getElementById('BatchFailed').textContent = progress.failed;
+                    document.getElementById('BatchNotFound').textContent = progress.noSubtitlesFound;
+                },
+
+                onBatchComplete: function(result) {
+                    var btn = document.getElementById('DownloadAllBtn');
+                    btn.disabled = false;
+                    btn.textContent = 'Download All Subtitles';
+
+                    document.getElementById('BatchCurrentItem').textContent = 'Complete!';
+
+                    var msg = 'Batch download complete: ' + result.succeeded + ' succeeded';
+                    if (result.failed > 0) msg += ', ' + result.failed + ' failed';
+                    if (result.noSubtitlesFound > 0) msg += ', ' + result.noSubtitlesFound + ' not found';
+
+                    Dashboard.alert(msg);
+
+                    // Refresh results to update button states
+                    if (this.currentLibraryId) {
+                        this.loadResults(this.currentLibraryId);
+                    }
                 },
 
                 formatDate: function(dateStr) {

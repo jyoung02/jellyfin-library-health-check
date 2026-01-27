@@ -203,14 +203,123 @@ public class HealthCheckController : ControllerBase
 
         _logger.LogInformation("API request: DownloadSubtitles for {ItemId}", validatedId);
 
-        var result = await _libraryScanner.DownloadSubtitlesAsync(validatedId.Value, cancellationToken)
+        var result = await _libraryScanner.DownloadSubtitlesAsync(validatedId.Value, false, cancellationToken)
             .ConfigureAwait(false);
 
         return Ok(new SubtitleDownloadResponse
         {
             Success = result.Success,
-            Message = result.Message
+            Message = result.Message,
+            UsedFallback = result.UsedFallback
         });
+    }
+
+    /// <summary>
+    /// Checks if subtitle providers are configured in Jellyfin.
+    /// </summary>
+    [HttpGet("SubtitleProviders")]
+    [ProducesResponseType(typeof(SubtitleProviderStatus), StatusCodes.Status200OK)]
+    public ActionResult<SubtitleProviderStatus> CheckSubtitleProviders()
+    {
+        _logger.LogInformation("API request: CheckSubtitleProviders");
+
+        var hasProviders = _libraryScanner.HasSubtitleProviders();
+
+        return Ok(new SubtitleProviderStatus
+        {
+            HasProviders = hasProviders,
+            Message = hasProviders
+                ? "Subtitle providers are configured."
+                : "No subtitle providers found. Install the OpenSubtitles plugin in Jellyfin."
+        });
+    }
+
+    /// <summary>
+    /// Downloads subtitles for all items missing subtitles in a library.
+    /// </summary>
+    [HttpPost("DownloadAllSubtitles/{libraryId}")]
+    [ProducesResponseType(typeof(BatchSubtitleResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<BatchSubtitleResponse>> DownloadAllSubtitles(
+        [FromRoute] string libraryId,
+        [FromQuery] bool forcedOnly = false,
+        CancellationToken cancellationToken = default)
+    {
+        var validatedId = ValidateLibraryIdParameter(libraryId);
+        if (validatedId == null)
+        {
+            return BadRequest("Invalid library ID format.");
+        }
+
+        if (_libraryScanner.IsDownloadingBatch)
+        {
+            return Conflict("A batch download is already in progress.");
+        }
+
+        _logger.LogInformation(
+            "API request: DownloadAllSubtitles for {LibraryId} (forcedOnly: {ForcedOnly})",
+            validatedId,
+            forcedOnly);
+
+        try
+        {
+            var result = await _libraryScanner.DownloadAllSubtitlesAsync(
+                validatedId.Value,
+                forcedOnly,
+                cancellationToken).ConfigureAwait(false);
+
+            return Ok(MapBatchProgress(result));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Gets the current batch subtitle download progress.
+    /// </summary>
+    [HttpGet("BatchProgress")]
+    [ProducesResponseType(typeof(BatchSubtitleResponse), StatusCodes.Status200OK)]
+    public ActionResult<BatchSubtitleResponse> GetBatchProgress()
+    {
+        _logger.LogDebug("API request: GetBatchProgress");
+
+        var progress = _libraryScanner.BatchProgress;
+        if (progress == null)
+        {
+            return Ok(new BatchSubtitleResponse
+            {
+                IsRunning = false,
+                Total = 0,
+                Completed = 0
+            });
+        }
+
+        return Ok(MapBatchProgress(progress));
+    }
+
+    private static BatchSubtitleResponse MapBatchProgress(BatchSubtitleProgress progress)
+    {
+        return new BatchSubtitleResponse
+        {
+            Total = progress.Total,
+            Completed = progress.Completed,
+            Succeeded = progress.Succeeded,
+            Failed = progress.Failed,
+            NoSubtitlesFound = progress.NoSubtitlesFound,
+            IsRunning = progress.IsRunning,
+            CurrentItem = progress.CurrentItem,
+            Results = progress.Results.Select(r => new BatchSubtitleItemResponse
+            {
+                ItemId = r.ItemId.ToString(),
+                ItemName = r.ItemName,
+                Success = r.Success,
+                Message = r.Message,
+                UsedFallback = r.UsedFallback
+            }).ToList()
+        };
     }
 
     private Guid? ValidateLibraryIdParameter(string? libraryId)
@@ -270,5 +379,71 @@ public class SubtitleDownloadResponse
     public bool Success { get; set; }
 
     /// <summary>Gets or sets the result message.</summary>
+    public string Message { get; set; } = string.Empty;
+
+    /// <summary>Gets or sets a value indicating whether fallback subtitles were used.</summary>
+    public bool UsedFallback { get; set; }
+}
+
+/// <summary>
+/// Batch subtitle download response DTO.
+/// </summary>
+public class BatchSubtitleResponse
+{
+    /// <summary>Gets or sets the total number of items to process.</summary>
+    public int Total { get; set; }
+
+    /// <summary>Gets or sets the number of completed items.</summary>
+    public int Completed { get; set; }
+
+    /// <summary>Gets or sets the number of successful downloads.</summary>
+    public int Succeeded { get; set; }
+
+    /// <summary>Gets or sets the number of failed downloads.</summary>
+    public int Failed { get; set; }
+
+    /// <summary>Gets or sets the number of items where no subtitles were found.</summary>
+    public int NoSubtitlesFound { get; set; }
+
+    /// <summary>Gets or sets a value indicating whether the batch is still running.</summary>
+    public bool IsRunning { get; set; }
+
+    /// <summary>Gets or sets the name of the current item being processed.</summary>
+    public string? CurrentItem { get; set; }
+
+    /// <summary>Gets or sets the individual item results.</summary>
+    public List<BatchSubtitleItemResponse> Results { get; set; } = new();
+}
+
+/// <summary>
+/// Individual item result in batch download.
+/// </summary>
+public class BatchSubtitleItemResponse
+{
+    /// <summary>Gets or sets the item ID.</summary>
+    public string ItemId { get; set; } = string.Empty;
+
+    /// <summary>Gets or sets the item name.</summary>
+    public string ItemName { get; set; } = string.Empty;
+
+    /// <summary>Gets or sets a value indicating whether the download was successful.</summary>
+    public bool Success { get; set; }
+
+    /// <summary>Gets or sets the result message.</summary>
+    public string Message { get; set; } = string.Empty;
+
+    /// <summary>Gets or sets a value indicating whether fallback subtitles were used.</summary>
+    public bool UsedFallback { get; set; }
+}
+
+/// <summary>
+/// Subtitle provider status response.
+/// </summary>
+public class SubtitleProviderStatus
+{
+    /// <summary>Gets or sets a value indicating whether subtitle providers are configured.</summary>
+    public bool HasProviders { get; set; }
+
+    /// <summary>Gets or sets the status message.</summary>
     public string Message { get; set; } = string.Empty;
 }
