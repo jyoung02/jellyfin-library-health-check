@@ -213,36 +213,12 @@ public class LibraryScanner
     /// <summary>
     /// Checks if subtitle providers are configured in Jellyfin.
     /// </summary>
-    /// <returns>True if at least one provider is available.</returns>
+    /// <returns>Always returns true - provider detection is unreliable.</returns>
     public bool HasSubtitleProviders()
     {
-        try
-        {
-            // Try to get any video item from the library to check providers
-            var query = new InternalItemsQuery
-            {
-                IncludeItemTypes = new[] { BaseItemKind.Movie, BaseItemKind.Episode },
-                Recursive = true,
-                Limit = 1
-            };
-
-            var items = _libraryManager.GetItemList(query);
-            if (items.Count > 0 && items[0] is Video video)
-            {
-                var providers = _subtitleManager.GetSupportedProviders(video);
-                return providers != null && providers.Length > 0;
-            }
-
-            // No video items found, can't check - assume providers exist
-            _logger.LogDebug("No video items found to check subtitle providers, assuming available");
-            return true;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to check subtitle providers, assuming available");
-            // If check fails, assume providers exist - user will find out on download
-            return true;
-        }
+        // Provider detection via GetSupportedProviders is unreliable
+        // Always return true - user will see error on download if no providers
+        return true;
     }
 
     /// <summary>

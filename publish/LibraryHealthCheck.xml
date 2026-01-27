@@ -440,7 +440,7 @@
             <summary>
             Checks if subtitle providers are configured in Jellyfin.
             </summary>
-            <returns>True if at least one provider is available.</returns>
+            <returns>Always returns true - provider detection is unreliable.</returns>
         </member>
         <member name="M:LibraryHealthCheck.Services.LibraryScanner.DownloadSubtitlesAsync(System.Guid,System.Boolean,System.Threading.CancellationToken)">
             <summary>
