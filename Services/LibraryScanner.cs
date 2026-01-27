@@ -218,13 +218,30 @@ public class LibraryScanner
     {
         try
         {
-            var providers = _subtitleManager.GetSupportedProviders(new Video());
-            return providers != null && providers.Length > 0;
+            // Try to get any video item from the library to check providers
+            var query = new InternalItemsQuery
+            {
+                IncludeItemTypes = new[] { BaseItemKind.Movie, BaseItemKind.Episode },
+                Recursive = true,
+                Limit = 1
+            };
+
+            var items = _libraryManager.GetItemList(query);
+            if (items.Count > 0 && items[0] is Video video)
+            {
+                var providers = _subtitleManager.GetSupportedProviders(video);
+                return providers != null && providers.Length > 0;
+            }
+
+            // No video items found, can't check - assume providers exist
+            _logger.LogDebug("No video items found to check subtitle providers, assuming available");
+            return true;
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to check subtitle providers");
-            return false;
+            _logger.LogWarning(ex, "Failed to check subtitle providers, assuming available");
+            // If check fails, assume providers exist - user will find out on download
+            return true;
         }
     }
 

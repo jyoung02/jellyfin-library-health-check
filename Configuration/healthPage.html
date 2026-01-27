@@ -243,15 +243,19 @@
                         type: 'GET',
                         dataType: 'json'
                     }).then(function(result) {
-                        self.hasSubtitleProviders = result.hasProviders;
+                        // Handle both PascalCase and camelCase JSON
+                        var hasProviders = result.HasProviders || result.hasProviders;
+                        self.hasSubtitleProviders = hasProviders;
                         var warning = document.getElementById('ProviderWarning');
-                        if (!result.hasProviders) {
+                        if (!hasProviders) {
                             warning.classList.add('active');
                         } else {
                             warning.classList.remove('active');
                         }
                     }).catch(function(err) {
                         console.error('Failed to check subtitle providers:', err);
+                        // Assume providers exist if check fails
+                        self.hasSubtitleProviders = true;
                     });
                 },
 
@@ -280,8 +284,11 @@
                         var select = document.getElementById('LibrarySelect');
                         libraries.forEach(function(lib) {
                             var option = document.createElement('option');
-                            option.value = lib.id;
-                            option.textContent = lib.name + ' (' + lib.collectionType + ')';
+                            // Handle both PascalCase and camelCase JSON
+                            option.value = lib.Id || lib.id;
+                            var name = lib.Name || lib.name || 'Unknown';
+                            var type = lib.CollectionType || lib.collectionType || 'unknown';
+                            option.textContent = name + ' (' + type + ')';
                             select.appendChild(option);
                         });
                     }).catch(function(err) {
@@ -320,14 +327,21 @@
                 },
 
                 renderResults: function(result) {
-                    document.getElementById('LibraryName').textContent = result.libraryName;
-                    document.getElementById('TotalItems').textContent = result.totalItems;
-                    document.getElementById('LastScanned').textContent = this.formatDate(result.completedAt);
+                    // Handle both PascalCase and camelCase JSON
+                    var libraryName = result.LibraryName || result.libraryName;
+                    var totalItems = result.TotalItems || result.totalItems;
+                    var completedAt = result.CompletedAt || result.completedAt;
+                    var issues = result.Issues || result.issues || [];
+
+                    document.getElementById('LibraryName').textContent = libraryName;
+                    document.getElementById('TotalItems').textContent = totalItems;
+                    document.getElementById('LastScanned').textContent = this.formatDate(completedAt);
 
                     var errors = 0, warnings = 0, infos = 0;
-                    result.issues.forEach(function(issue) {
-                        if (issue.severity === 'Error') errors++;
-                        else if (issue.severity === 'Warning') warnings++;
+                    issues.forEach(function(issue) {
+                        var severity = issue.Severity || issue.severity;
+                        if (severity === 'Error') errors++;
+                        else if (severity === 'Warning') warnings++;
                         else infos++;
                     });
 
@@ -338,7 +352,7 @@
                     document.getElementById('SummaryCard').style.display = '';
                     document.getElementById('IssuesSection').style.display = '';
 
-                    this.renderIssues(result.issues);
+                    this.renderIssues(issues);
                 },
 
                 renderIssues: function(issues) {
@@ -357,7 +371,10 @@
                     var self = this;
 
                     // Show Download All button if there are missing subtitle issues
-                    var subtitleIssues = issues.filter(function(i) { return i.type === 'MissingSubtitles'; });
+                    var subtitleIssues = issues.filter(function(i) {
+                        var t = i.Type || i.type;
+                        return t === 'MissingSubtitles';
+                    });
                     if (subtitleIssues.length > 0 && self.hasSubtitleProviders) {
                         downloadAllBtn.style.display = '';
                         downloadAllBtn.textContent = 'Download All Subtitles (' + subtitleIssues.length + ')';
@@ -368,31 +385,37 @@
                     }
 
                     issues.forEach(function(issue) {
+                        // Handle both PascalCase and camelCase JSON
+                        var itemId = issue.ItemId || issue.itemId;
+                        var itemName = issue.ItemName || issue.itemName;
+                        var issueType = issue.Type || issue.type;
+                        var severity = issue.Severity || issue.severity;
+
                         var tr = document.createElement('tr');
-                        tr.id = 'issue-' + issue.itemId;
+                        tr.id = 'issue-' + itemId;
 
                         var itemTd = document.createElement('td');
                         var link = document.createElement('a');
                         link.className = 'item-link';
-                        link.href = '/web/index.html#!/item?id=' + issue.itemId;
-                        link.textContent = issue.itemName;
+                        link.href = '/web/index.html#!/item?id=' + itemId;
+                        link.textContent = itemName;
                         itemTd.appendChild(link);
 
                         var issueTd = document.createElement('td');
-                        issueTd.textContent = self.formatIssueType(issue.type);
+                        issueTd.textContent = self.formatIssueType(issueType);
 
                         var severityTd = document.createElement('td');
-                        severityTd.className = 'severity-' + issue.severity.toLowerCase();
-                        severityTd.textContent = issue.severity;
+                        severityTd.className = 'severity-' + severity.toLowerCase();
+                        severityTd.textContent = severity;
 
                         var actionTd = document.createElement('td');
-                        if (issue.type === 'MissingSubtitles') {
+                        if (issueType === 'MissingSubtitles') {
                             var downloadBtn = document.createElement('button');
                             downloadBtn.className = 'emby-button raised';
                             downloadBtn.style.cssText = 'padding:0.3em 0.6em;font-size:0.85em';
                             downloadBtn.textContent = 'Get Subs';
                             downloadBtn.onclick = function() {
-                                self.downloadSubtitles(issue.itemId, issue.itemName, downloadBtn);
+                                self.downloadSubtitles(itemId, itemName, downloadBtn);
                             };
                             actionTd.appendChild(downloadBtn);
                         }
@@ -445,17 +468,22 @@
                         type: 'POST',
                         dataType: 'json'
                     }).then(function(result) {
-                        if (result.success) {
-                            btn.textContent = result.usedFallback ? 'Done*' : 'Done!';
-                            btn.style.background = result.usedFallback ? '#ff9800' : '#4caf50';
-                            var msg = result.usedFallback
+                        // Handle both PascalCase and camelCase JSON
+                        var success = result.Success || result.success;
+                        var usedFallback = result.UsedFallback || result.usedFallback;
+                        var message = result.Message || result.message;
+
+                        if (success) {
+                            btn.textContent = usedFallback ? 'Done*' : 'Done!';
+                            btn.style.background = usedFallback ? '#ff9800' : '#4caf50';
+                            var msg = usedFallback
                                 ? 'Fallback subtitles downloaded for: ' + itemName
                                 : 'Subtitles downloaded for: ' + itemName;
                             Dashboard.alert(msg);
                         } else {
                             btn.textContent = 'None';
                             btn.disabled = false;
-                            Dashboard.alert(result.message || 'No subtitles found.');
+                            Dashboard.alert(message || 'No subtitles found.');
                         }
                     }).catch(function(err) {
                         btn.textContent = originalText;
@@ -521,28 +549,41 @@
                 },
 
                 updateBatchProgress: function(progress) {
-                    var percent = progress.total > 0 ? Math.round((progress.completed / progress.total) * 100) : 0;
+                    // Handle both PascalCase and camelCase JSON
+                    var total = progress.Total || progress.total || 0;
+                    var completed = progress.Completed || progress.completed || 0;
+                    var succeeded = progress.Succeeded || progress.succeeded || 0;
+                    var failed = progress.Failed || progress.failed || 0;
+                    var notFound = progress.NoSubtitlesFound || progress.noSubtitlesFound || 0;
+                    var currentItem = progress.CurrentItem || progress.currentItem;
 
-                    document.getElementById('BatchCurrentItem').textContent = progress.currentItem || 'Processing...';
+                    var percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+                    document.getElementById('BatchCurrentItem').textContent = currentItem || 'Processing...';
                     document.getElementById('BatchPercent').textContent = percent + '%';
                     document.getElementById('BatchProgressFill').style.width = percent + '%';
-                    document.getElementById('BatchCompleted').textContent = progress.completed;
-                    document.getElementById('BatchTotal').textContent = progress.total;
-                    document.getElementById('BatchSucceeded').textContent = progress.succeeded;
-                    document.getElementById('BatchFailed').textContent = progress.failed;
-                    document.getElementById('BatchNotFound').textContent = progress.noSubtitlesFound;
+                    document.getElementById('BatchCompleted').textContent = completed;
+                    document.getElementById('BatchTotal').textContent = total;
+                    document.getElementById('BatchSucceeded').textContent = succeeded;
+                    document.getElementById('BatchFailed').textContent = failed;
+                    document.getElementById('BatchNotFound').textContent = notFound;
                 },
 
                 onBatchComplete: function(result) {
+                    // Handle both PascalCase and camelCase JSON
+                    var succeeded = result.Succeeded || result.succeeded || 0;
+                    var failed = result.Failed || result.failed || 0;
+                    var notFound = result.NoSubtitlesFound || result.noSubtitlesFound || 0;
+
                     var btn = document.getElementById('DownloadAllBtn');
                     btn.disabled = false;
                     btn.textContent = 'Download All Subtitles';
 
                     document.getElementById('BatchCurrentItem').textContent = 'Complete!';
 
-                    var msg = 'Batch download complete: ' + result.succeeded + ' succeeded';
-                    if (result.failed > 0) msg += ', ' + result.failed + ' failed';
-                    if (result.noSubtitlesFound > 0) msg += ', ' + result.noSubtitlesFound + ' not found';
+                    var msg = 'Batch download complete: ' + succeeded + ' succeeded';
+                    if (failed > 0) msg += ', ' + failed + ' failed';
+                    if (notFound > 0) msg += ', ' + notFound + ' not found';
 
                     Dashboard.alert(msg);
 

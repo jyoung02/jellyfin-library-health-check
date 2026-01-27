@@ -1,0 +1,661 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>LibraryHealthCheck</name>
+    </assembly>
+    <members>
+        <member name="T:LibraryHealthCheck.Api.HealthCheckController">
+            <summary>
+            API controller for library health check operations.
+            </summary>
+        </member>
+        <member name="M:LibraryHealthCheck.Api.HealthCheckController.#ctor(LibraryHealthCheck.Services.LibraryScanner,LibraryHealthCheck.Services.DataStore,Microsoft.Extensions.Logging.ILogger{LibraryHealthCheck.Api.HealthCheckController})">
+            <summary>
+            Initializes a new instance of the <see cref="T:LibraryHealthCheck.Api.HealthCheckController"/> class.
+            </summary>
+        </member>
+        <member name="M:LibraryHealthCheck.Api.HealthCheckController.GetLibraries">
+            <summary>
+            Gets all available libraries.
+            </summary>
+        </member>
+        <member name="M:LibraryHealthCheck.Api.HealthCheckController.GetAllResults">
+            <summary>
+            Gets all scan results.
+            </summary>
+        </member>
+        <member name="M:LibraryHealthCheck.Api.HealthCheckController.GetLibraryResult(System.String)">
+            <summary>
+            Gets scan result for a specific library.
+            </summary>
+        </member>
+        <member name="M:LibraryHealthCheck.Api.HealthCheckController.StartScan(System.String,System.Threading.CancellationToken)">
+            <summary>
+            Starts a scan for a specific library.
+            </summary>
+        </member>
+        <member name="M:LibraryHealthCheck.Api.HealthCheckController.GetStatus">
+            <summary>
+            Gets the current scan status.
+            </summary>
+        </member>
+        <member name="M:LibraryHealthCheck.Api.HealthCheckController.DeleteResult(System.String)">
+            <summary>
+            Deletes scan results for a library.
+            </summary>
+        </member>
+        <member name="M:LibraryHealthCheck.Api.HealthCheckController.DownloadSubtitles(System.String,System.Threading.CancellationToken)">
+            <summary>
+            Downloads forced English subtitles for an item.
+            </summary>
+        </member>
+        <member name="M:LibraryHealthCheck.Api.HealthCheckController.CheckSubtitleProviders">
+            <summary>
+            Checks if subtitle providers are configured in Jellyfin.
+            </summary>
+        </member>
+        <member name="M:LibraryHealthCheck.Api.HealthCheckController.DownloadAllSubtitles(System.String,System.Boolean,System.Threading.CancellationToken)">
+            <summary>
+            Downloads subtitles for all items missing subtitles in a library.
+            </summary>
+        </member>
+        <member name="M:LibraryHealthCheck.Api.HealthCheckController.GetBatchProgress">
+            <summary>
+            Gets the current batch subtitle download progress.
+            </summary>
+        </member>
+        <member name="T:LibraryHealthCheck.Api.LibraryInfo">
+            <summary>
+            Library information DTO.
+            </summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Api.LibraryInfo.Id">
+            <summary>Gets or sets the library ID.</summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Api.LibraryInfo.Name">
+            <summary>Gets or sets the library name.</summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Api.LibraryInfo.CollectionType">
+            <summary>Gets or sets the collection type.</summary>
+        </member>
+        <member name="T:LibraryHealthCheck.Api.ScanStatus">
+            <summary>
+            Scan status DTO.
+            </summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Api.ScanStatus.IsScanning">
+            <summary>Gets or sets a value indicating whether a scan is in progress.</summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Api.ScanStatus.CurrentLibraryId">
+            <summary>Gets or sets the current library ID being scanned.</summary>
+        </member>
+        <member name="T:LibraryHealthCheck.Api.SubtitleDownloadResponse">
+            <summary>
+            Subtitle download response DTO.
+            </summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Api.SubtitleDownloadResponse.Success">
+            <summary>Gets or sets a value indicating whether the download was successful.</summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Api.SubtitleDownloadResponse.Message">
+            <summary>Gets or sets the result message.</summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Api.SubtitleDownloadResponse.UsedFallback">
+            <summary>Gets or sets a value indicating whether fallback subtitles were used.</summary>
+        </member>
+        <member name="T:LibraryHealthCheck.Api.BatchSubtitleResponse">
+            <summary>
+            Batch subtitle download response DTO.
+            </summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Api.BatchSubtitleResponse.Total">
+            <summary>Gets or sets the total number of items to process.</summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Api.BatchSubtitleResponse.Completed">
+            <summary>Gets or sets the number of completed items.</summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Api.BatchSubtitleResponse.Succeeded">
+            <summary>Gets or sets the number of successful downloads.</summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Api.BatchSubtitleResponse.Failed">
+            <summary>Gets or sets the number of failed downloads.</summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Api.BatchSubtitleResponse.NoSubtitlesFound">
+            <summary>Gets or sets the number of items where no subtitles were found.</summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Api.BatchSubtitleResponse.IsRunning">
+            <summary>Gets or sets a value indicating whether the batch is still running.</summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Api.BatchSubtitleResponse.CurrentItem">
+            <summary>Gets or sets the name of the current item being processed.</summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Api.BatchSubtitleResponse.Results">
+            <summary>Gets or sets the individual item results.</summary>
+        </member>
+        <member name="T:LibraryHealthCheck.Api.BatchSubtitleItemResponse">
+            <summary>
+            Individual item result in batch download.
+            </summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Api.BatchSubtitleItemResponse.ItemId">
+            <summary>Gets or sets the item ID.</summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Api.BatchSubtitleItemResponse.ItemName">
+            <summary>Gets or sets the item name.</summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Api.BatchSubtitleItemResponse.Success">
+            <summary>Gets or sets a value indicating whether the download was successful.</summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Api.BatchSubtitleItemResponse.Message">
+            <summary>Gets or sets the result message.</summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Api.BatchSubtitleItemResponse.UsedFallback">
+            <summary>Gets or sets a value indicating whether fallback subtitles were used.</summary>
+        </member>
+        <member name="T:LibraryHealthCheck.Api.SubtitleProviderStatus">
+            <summary>
+            Subtitle provider status response.
+            </summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Api.SubtitleProviderStatus.HasProviders">
+            <summary>Gets or sets a value indicating whether subtitle providers are configured.</summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Api.SubtitleProviderStatus.Message">
+            <summary>Gets or sets the status message.</summary>
+        </member>
+        <member name="T:LibraryHealthCheck.Configuration.PluginConfiguration">
+            <summary>
+            Plugin configuration for Library Health Check.
+            </summary>
+        </member>
+        <member name="M:LibraryHealthCheck.Configuration.PluginConfiguration.#ctor">
+            <summary>
+            Initializes a new instance of the <see cref="T:LibraryHealthCheck.Configuration.PluginConfiguration"/> class.
+            </summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Configuration.PluginConfiguration.EnableScanning">
+            <summary>
+            Gets or sets a value indicating whether scanning is enabled.
+            </summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Configuration.PluginConfiguration.CheckMissingPoster">
+            <summary>
+            Gets or sets a value indicating whether to check for missing posters.
+            </summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Configuration.PluginConfiguration.CheckMissingOverview">
+            <summary>
+            Gets or sets a value indicating whether to check for missing overviews.
+            </summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Configuration.PluginConfiguration.CheckMissingYear">
+            <summary>
+            Gets or sets a value indicating whether to check for missing years.
+            </summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Configuration.PluginConfiguration.CheckMissingGenre">
+            <summary>
+            Gets or sets a value indicating whether to check for missing genres.
+            </summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Configuration.PluginConfiguration.CheckMissingSubtitles">
+            <summary>
+            Gets or sets a value indicating whether to check for missing subtitles.
+            </summary>
+        </member>
+        <member name="T:LibraryHealthCheck.Models.IssueSeverity">
+            <summary>
+            Severity level of a health issue.
+            </summary>
+        </member>
+        <member name="F:LibraryHealthCheck.Models.IssueSeverity.Info">
+            <summary>Informational issue.</summary>
+        </member>
+        <member name="F:LibraryHealthCheck.Models.IssueSeverity.Warning">
+            <summary>Warning - should be addressed.</summary>
+        </member>
+        <member name="F:LibraryHealthCheck.Models.IssueSeverity.Error">
+            <summary>Error - significant problem.</summary>
+        </member>
+        <member name="T:LibraryHealthCheck.Models.IssueType">
+            <summary>
+            Type of health issue detected.
+            </summary>
+        </member>
+        <member name="F:LibraryHealthCheck.Models.IssueType.MissingPoster">
+            <summary>Item is missing a poster/primary image.</summary>
+        </member>
+        <member name="F:LibraryHealthCheck.Models.IssueType.MissingOverview">
+            <summary>Item is missing an overview/description.</summary>
+        </member>
+        <member name="F:LibraryHealthCheck.Models.IssueType.MissingYear">
+            <summary>Item is missing a production year.</summary>
+        </member>
+        <member name="F:LibraryHealthCheck.Models.IssueType.MissingGenre">
+            <summary>Item is missing genre information.</summary>
+        </member>
+        <member name="F:LibraryHealthCheck.Models.IssueType.MissingSubtitles">
+            <summary>Item is missing subtitles.</summary>
+        </member>
+        <member name="T:LibraryHealthCheck.Models.HealthIssue">
+            <summary>
+            Represents a single health issue found in a library item.
+            </summary>
+        </member>
+        <member name="M:LibraryHealthCheck.Models.HealthIssue.#ctor">
+            <summary>
+            Initializes a new instance for JSON deserialization.
+            </summary>
+        </member>
+        <member name="M:LibraryHealthCheck.Models.HealthIssue.#ctor(System.Guid,System.Guid,System.String,System.String,LibraryHealthCheck.Models.IssueType,LibraryHealthCheck.Models.IssueSeverity,System.DateTime)">
+            <summary>
+            Initializes a new instance of the <see cref="T:LibraryHealthCheck.Models.HealthIssue"/> class.
+            </summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Models.HealthIssue.Id">
+            <summary>Gets the unique identifier for this issue.</summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Models.HealthIssue.ItemId">
+            <summary>Gets the ID of the item with the issue.</summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Models.HealthIssue.ItemName">
+            <summary>Gets the name of the item.</summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Models.HealthIssue.LibraryName">
+            <summary>Gets the name of the library containing the item.</summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Models.HealthIssue.Type">
+            <summary>Gets the type of issue.</summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Models.HealthIssue.Severity">
+            <summary>Gets the severity of the issue.</summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Models.HealthIssue.DetectedAt">
+            <summary>Gets when the issue was detected.</summary>
+        </member>
+        <member name="T:LibraryHealthCheck.Models.ScanResult">
+            <summary>
+            Represents the result of a library health scan.
+            </summary>
+        </member>
+        <member name="M:LibraryHealthCheck.Models.ScanResult.#ctor">
+            <summary>
+            Initializes a new instance for JSON deserialization.
+            </summary>
+        </member>
+        <member name="M:LibraryHealthCheck.Models.ScanResult.#ctor(System.Guid,System.Guid,System.String,System.DateTime)">
+            <summary>
+            Initializes a new instance of the <see cref="T:LibraryHealthCheck.Models.ScanResult"/> class.
+            </summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Models.ScanResult.Id">
+            <summary>Gets the unique identifier for this scan result.</summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Models.ScanResult.LibraryId">
+            <summary>Gets the ID of the library that was scanned.</summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Models.ScanResult.LibraryName">
+            <summary>Gets the name of the library.</summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Models.ScanResult.StartedAt">
+            <summary>Gets when the scan started.</summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Models.ScanResult.CompletedAt">
+            <summary>Gets or sets when the scan completed.</summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Models.ScanResult.TotalItems">
+            <summary>Gets or sets the total number of items scanned.</summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Models.ScanResult.IssuesFound">
+            <summary>Gets or sets the number of issues found.</summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Models.ScanResult.Issues">
+            <summary>Gets or sets the list of issues found.</summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Models.ScanResult.IsComplete">
+            <summary>Gets a value indicating whether the scan is complete.</summary>
+        </member>
+        <member name="T:LibraryHealthCheck.Plugin">
+            <summary>
+            Library Health Check plugin for Jellyfin.
+            Scans media libraries for issues like missing metadata.
+            </summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Plugin.Instance">
+            <summary>
+            Gets the current plugin instance.
+            </summary>
+        </member>
+        <member name="M:LibraryHealthCheck.Plugin.#ctor(MediaBrowser.Common.Configuration.IApplicationPaths,MediaBrowser.Model.Serialization.IXmlSerializer)">
+            <summary>
+            Initializes a new instance of the <see cref="T:LibraryHealthCheck.Plugin"/> class.
+            </summary>
+            <param name="applicationPaths">Application paths.</param>
+            <param name="xmlSerializer">XML serializer.</param>
+        </member>
+        <member name="P:LibraryHealthCheck.Plugin.Name">
+            <inheritdoc />
+        </member>
+        <member name="P:LibraryHealthCheck.Plugin.Description">
+            <inheritdoc />
+        </member>
+        <member name="P:LibraryHealthCheck.Plugin.Id">
+            <inheritdoc />
+        </member>
+        <member name="M:LibraryHealthCheck.Plugin.GetPages">
+            <summary>
+            Gets the plugin pages.
+            </summary>
+            <returns>Collection of plugin page info.</returns>
+        </member>
+        <member name="T:LibraryHealthCheck.PluginServiceRegistrator">
+            <summary>
+            Registers plugin services with the Jellyfin DI container.
+            </summary>
+        </member>
+        <member name="M:LibraryHealthCheck.PluginServiceRegistrator.RegisterServices(Microsoft.Extensions.DependencyInjection.IServiceCollection,MediaBrowser.Controller.IServerApplicationHost)">
+            <summary>
+            Registers services for the plugin.
+            </summary>
+            <param name="serviceCollection">The service collection.</param>
+            <param name="serverApplicationHost">The server application host.</param>
+        </member>
+        <member name="T:LibraryHealthCheck.Services.DataStore">
+            <summary>
+            Handles persistence of scan results.
+            Uses file-based JSON storage with proper locking.
+            </summary>
+        </member>
+        <member name="M:LibraryHealthCheck.Services.DataStore.#ctor(System.String,Microsoft.Extensions.Logging.ILogger{LibraryHealthCheck.Services.DataStore})">
+            <summary>
+            Initializes a new instance of the <see cref="T:LibraryHealthCheck.Services.DataStore"/> class.
+            </summary>
+        </member>
+        <member name="M:LibraryHealthCheck.Services.DataStore.SaveScanResult(LibraryHealthCheck.Models.ScanResult)">
+            <summary>
+            Saves a scan result to storage.
+            </summary>
+        </member>
+        <member name="M:LibraryHealthCheck.Services.DataStore.GetAllScanResults">
+            <summary>
+            Gets all scan results.
+            </summary>
+        </member>
+        <member name="M:LibraryHealthCheck.Services.DataStore.GetScanResult(System.Guid)">
+            <summary>
+            Gets scan result for a specific library.
+            </summary>
+        </member>
+        <member name="M:LibraryHealthCheck.Services.DataStore.DeleteScanResult(System.Guid)">
+            <summary>
+            Deletes scan result for a library.
+            </summary>
+        </member>
+        <member name="M:LibraryHealthCheck.Services.DataStore.Dispose">
+            <summary>
+            Disposes of resources.
+            </summary>
+        </member>
+        <member name="T:LibraryHealthCheck.Services.LibraryScanner">
+            <summary>
+            Scans library items for health issues.
+            </summary>
+        </member>
+        <member name="M:LibraryHealthCheck.Services.LibraryScanner.#ctor(MediaBrowser.Controller.Library.ILibraryManager,MediaBrowser.Controller.Subtitles.ISubtitleManager,LibraryHealthCheck.Services.DataStore,Microsoft.Extensions.Logging.ILogger{LibraryHealthCheck.Services.LibraryScanner})">
+            <summary>
+            Initializes a new instance of the <see cref="T:LibraryHealthCheck.Services.LibraryScanner"/> class.
+            </summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Services.LibraryScanner.IsScanning">
+            <summary>
+            Gets a value indicating whether a scan is currently in progress.
+            </summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Services.LibraryScanner.CurrentScanLibraryId">
+            <summary>
+            Gets the library ID currently being scanned.
+            </summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Services.LibraryScanner.IsDownloadingBatch">
+            <summary>
+            Gets a value indicating whether a batch subtitle download is in progress.
+            </summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Services.LibraryScanner.BatchProgress">
+            <summary>
+            Gets the current batch download progress.
+            </summary>
+        </member>
+        <member name="M:LibraryHealthCheck.Services.LibraryScanner.GetLibraries">
+            <summary>
+            Gets all virtual folders (libraries) in Jellyfin.
+            </summary>
+        </member>
+        <member name="M:LibraryHealthCheck.Services.LibraryScanner.ScanLibraryAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>
+            Scans a library for health issues.
+            </summary>
+        </member>
+        <member name="M:LibraryHealthCheck.Services.LibraryScanner.HasSubtitleProviders">
+            <summary>
+            Checks if subtitle providers are configured in Jellyfin.
+            </summary>
+            <returns>True if at least one provider is available.</returns>
+        </member>
+        <member name="M:LibraryHealthCheck.Services.LibraryScanner.DownloadSubtitlesAsync(System.Guid,System.Boolean,System.Threading.CancellationToken)">
+            <summary>
+            Downloads English subtitles for an item, preferring forced/foreign-only subtitles.
+            Falls back to regular English subtitles if no forced subtitles are found.
+            </summary>
+            <param name="itemId">The item ID.</param>
+            <param name="forcedOnly">If true, only download forced subtitles (no fallback).</param>
+            <param name="cancellationToken">Cancellation token.</param>
+            <returns>Result indicating success/failure and whether fallback was used.</returns>
+        </member>
+        <member name="M:LibraryHealthCheck.Services.LibraryScanner.DownloadAllSubtitlesAsync(System.Guid,System.Boolean,System.Threading.CancellationToken)">
+            <summary>
+            Downloads subtitles for all items with missing subtitles in a library.
+            </summary>
+            <param name="libraryId">The library ID to process.</param>
+            <param name="forcedOnly">If true, only download forced subtitles.</param>
+            <param name="cancellationToken">Cancellation token.</param>
+            <returns>Batch progress with results.</returns>
+        </member>
+        <member name="T:LibraryHealthCheck.Services.SubtitleDownloadResult">
+            <summary>
+            Result of a subtitle download attempt.
+            </summary>
+        </member>
+        <member name="M:LibraryHealthCheck.Services.SubtitleDownloadResult.#ctor(System.Boolean,System.String,System.Boolean)">
+            <summary>
+            Initializes a new instance of the <see cref="T:LibraryHealthCheck.Services.SubtitleDownloadResult"/> class.
+            </summary>
+            <param name="success">Whether the download was successful.</param>
+            <param name="message">Result message.</param>
+            <param name="usedFallback">Whether fallback subtitles were used.</param>
+        </member>
+        <member name="P:LibraryHealthCheck.Services.SubtitleDownloadResult.Success">
+            <summary>Gets a value indicating whether the download was successful.</summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Services.SubtitleDownloadResult.Message">
+            <summary>Gets the result message.</summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Services.SubtitleDownloadResult.UsedFallback">
+            <summary>Gets a value indicating whether fallback (non-forced) subtitles were used.</summary>
+        </member>
+        <member name="T:LibraryHealthCheck.Services.BatchSubtitleProgress">
+            <summary>
+            Progress tracking for batch subtitle downloads.
+            </summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Services.BatchSubtitleProgress.Total">
+            <summary>Gets or sets the total number of items to process.</summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Services.BatchSubtitleProgress.Completed">
+            <summary>Gets or sets the number of completed items.</summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Services.BatchSubtitleProgress.Succeeded">
+            <summary>Gets or sets the number of successful downloads.</summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Services.BatchSubtitleProgress.Failed">
+            <summary>Gets or sets the number of failed downloads.</summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Services.BatchSubtitleProgress.NoSubtitlesFound">
+            <summary>Gets or sets the number of items where no subtitles were found.</summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Services.BatchSubtitleProgress.IsRunning">
+            <summary>Gets or sets a value indicating whether the batch is still running.</summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Services.BatchSubtitleProgress.CurrentItem">
+            <summary>Gets or sets the name of the current item being processed.</summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Services.BatchSubtitleProgress.Results">
+            <summary>Gets or sets the list of individual item results.</summary>
+        </member>
+        <member name="T:LibraryHealthCheck.Services.BatchSubtitleItemResult">
+            <summary>
+            Result for a single item in batch download.
+            </summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Services.BatchSubtitleItemResult.ItemId">
+            <summary>Gets or sets the item ID.</summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Services.BatchSubtitleItemResult.ItemName">
+            <summary>Gets or sets the item name.</summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Services.BatchSubtitleItemResult.Success">
+            <summary>Gets or sets a value indicating whether the download was successful.</summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Services.BatchSubtitleItemResult.Message">
+            <summary>Gets or sets the result message.</summary>
+        </member>
+        <member name="P:LibraryHealthCheck.Services.BatchSubtitleItemResult.UsedFallback">
+            <summary>Gets or sets a value indicating whether fallback subtitles were used.</summary>
+        </member>
+        <member name="T:LibraryHealthCheck.Validation.InputSanitizer">
+            <summary>
+            Provides input validation and sanitization utilities.
+            </summary>
+        </member>
+        <member name="M:LibraryHealthCheck.Validation.InputSanitizer.ValidateGuid(System.Guid,System.String)">
+            <summary>
+            Validates that a GUID is not empty.
+            </summary>
+        </member>
+        <member name="M:LibraryHealthCheck.Validation.InputSanitizer.ValidateGuid(System.String,System.String)">
+            <summary>
+            Validates and parses a string as a GUID.
+            </summary>
+        </member>
+        <member name="M:LibraryHealthCheck.Validation.InputSanitizer.SanitizeString(System.String,System.Int32)">
+            <summary>
+            Sanitizes a string by removing dangerous patterns and limiting length.
+            </summary>
+        </member>
+        <member name="M:LibraryHealthCheck.Validation.InputSanitizer.ValidateDateTime(System.DateTime,System.String)">
+            <summary>
+            Validates a DateTime is within reasonable bounds.
+            </summary>
+        </member>
+        <member name="M:LibraryHealthCheck.Validation.InputSanitizer.CreateDangerousPatternRegex">
+            <remarks>
+            Pattern:<br/>
+            <code>&lt;script|javascript:|data:|onclick|onerror|\\.\\.\\/|\\.\\.\\\\|\\x00</code><br/>
+            Options:<br/>
+            <code>RegexOptions.IgnoreCase | RegexOptions.Compiled</code><br/>
+            Explanation:<br/>
+            <code>
+            ○ Match with 8 alternative expressions, atomically.<br/>
+                ○ Match a sequence of expressions.<br/>
+                    ○ Match '&lt;'.<br/>
+                    ○ Match a character in the set [Ss].<br/>
+                    ○ Match a character in the set [Cc].<br/>
+                    ○ Match a character in the set [Rr].<br/>
+                    ○ Match a character in the set [Ii].<br/>
+                    ○ Match a character in the set [Pp].<br/>
+                    ○ Match a character in the set [Tt].<br/>
+                ○ Match a sequence of expressions.<br/>
+                    ○ Match a character in the set [Jj].<br/>
+                    ○ Match a character in the set [Aa].<br/>
+                    ○ Match a character in the set [Vv].<br/>
+                    ○ Match a character in the set [Aa].<br/>
+                    ○ Match a character in the set [Ss].<br/>
+                    ○ Match a character in the set [Cc].<br/>
+                    ○ Match a character in the set [Rr].<br/>
+                    ○ Match a character in the set [Ii].<br/>
+                    ○ Match a character in the set [Pp].<br/>
+                    ○ Match a character in the set [Tt].<br/>
+                    ○ Match ':'.<br/>
+                ○ Match a sequence of expressions.<br/>
+                    ○ Match a character in the set [Dd].<br/>
+                    ○ Match a character in the set [Aa].<br/>
+                    ○ Match a character in the set [Tt].<br/>
+                    ○ Match a character in the set [Aa].<br/>
+                    ○ Match ':'.<br/>
+                ○ Match a sequence of expressions.<br/>
+                    ○ Match a character in the set [Oo].<br/>
+                    ○ Match a character in the set [Nn].<br/>
+                    ○ Match a character in the set [Cc].<br/>
+                    ○ Match a character in the set [Ll].<br/>
+                    ○ Match a character in the set [Ii].<br/>
+                    ○ Match a character in the set [Cc].<br/>
+                    ○ Match a character in the set [Kk\u212A].<br/>
+                ○ Match a sequence of expressions.<br/>
+                    ○ Match a character in the set [Oo].<br/>
+                    ○ Match a character in the set [Nn].<br/>
+                    ○ Match a character in the set [Ee].<br/>
+                    ○ Match a character in the set [Rr] exactly 2 times.<br/>
+                    ○ Match a character in the set [Oo].<br/>
+                    ○ Match a character in the set [Rr].<br/>
+                ○ Match the string "../".<br/>
+                ○ Match the string "..\\".<br/>
+                ○ Match '\0'.<br/>
+            </code>
+            </remarks>
+        </member>
+        <member name="T:System.Text.RegularExpressions.Generated.CreateDangerousPatternRegex_0">
+            <summary>Custom <see cref="T:System.Text.RegularExpressions.Regex"/>-derived type for the CreateDangerousPatternRegex method.</summary>
+        </member>
+        <member name="F:System.Text.RegularExpressions.Generated.CreateDangerousPatternRegex_0.Instance">
+            <summary>Cached, thread-safe singleton instance.</summary>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.CreateDangerousPatternRegex_0.#ctor">
+            <summary>Initializes the instance.</summary>
+        </member>
+        <member name="T:System.Text.RegularExpressions.Generated.CreateDangerousPatternRegex_0.RunnerFactory">
+            <summary>Provides a factory for creating <see cref="T:System.Text.RegularExpressions.RegexRunner"/> instances to be used by methods on <see cref="T:System.Text.RegularExpressions.Regex"/>.</summary>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.CreateDangerousPatternRegex_0.RunnerFactory.CreateInstance">
+            <summary>Creates an instance of a <see cref="T:System.Text.RegularExpressions.RegexRunner"/> used by methods on <see cref="T:System.Text.RegularExpressions.Regex"/>.</summary>
+        </member>
+        <member name="T:System.Text.RegularExpressions.Generated.CreateDangerousPatternRegex_0.RunnerFactory.Runner">
+            <summary>Provides the runner that contains the custom logic implementing the specified regular expression.</summary>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.CreateDangerousPatternRegex_0.RunnerFactory.Runner.Scan(System.ReadOnlySpan{System.Char})">
+            <summary>Scan the <paramref name="inputSpan"/> starting from base.runtextstart for the next match.</summary>
+            <param name="inputSpan">The text being scanned by the regular expression.</param>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.CreateDangerousPatternRegex_0.RunnerFactory.Runner.TryFindNextPossibleStartingPosition(System.ReadOnlySpan{System.Char})">
+            <summary>Search <paramref name="inputSpan"/> starting from base.runtextpos for the next location a match could possibly start.</summary>
+            <param name="inputSpan">The text being scanned by the regular expression.</param>
+            <returns>true if a possible match was found; false if no more matches are possible.</returns>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.CreateDangerousPatternRegex_0.RunnerFactory.Runner.TryMatchAtCurrentPosition(System.ReadOnlySpan{System.Char})">
+            <summary>Determine whether <paramref name="inputSpan"/> at base.runtextpos is a match for the regular expression.</summary>
+            <param name="inputSpan">The text being scanned by the regular expression.</param>
+            <returns>true if the regular expression matches at the current position; otherwise, false.</returns>
+        </member>
+        <member name="T:System.Text.RegularExpressions.Generated.Utilities">
+            <summary>Helper methods used by generated <see cref="T:System.Text.RegularExpressions.Regex"/>-derived implementations.</summary>
+        </member>
+        <member name="F:System.Text.RegularExpressions.Generated.Utilities.s_defaultTimeout">
+            <summary>Default timeout value set in <see cref="T:System.AppContext"/>, or <see cref="F:System.Text.RegularExpressions.Regex.InfiniteMatchTimeout"/> if none was set.</summary>
+        </member>
+        <member name="F:System.Text.RegularExpressions.Generated.Utilities.s_hasTimeout">
+            <summary>Whether <see cref="F:System.Text.RegularExpressions.Generated.Utilities.s_defaultTimeout"/> is non-infinite.</summary>
+        </member>
+        <member name="F:System.Text.RegularExpressions.Generated.Utilities.s_ascii_1000000004000101084000010840000">
+            <summary>Supports searching for characters in or not in "\0.&lt;DJOdjo".</summary>
+        </member>
+    </members>
+</doc>
